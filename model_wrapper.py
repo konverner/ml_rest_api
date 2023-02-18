@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from torchvision import models
 
@@ -25,15 +26,15 @@ class ModelWrapper:
     def eval(self):
         self.model.eval()
 
-    def init_model(self, num_classes, freeze_backbone):
-        self.num_classes = num_classes
+    def init_model(self, id2label, freeze_backbone):
+        self.id2label = id2label
         self.freeze_backbone = freeze_backbone
 
         if self.backbone_name == 'resnet18':
             if self.freeze_backbone:
                 for param in self.model.parameters():
                     param.requires_grad = False
-            self.model.fc = nn.Linear(self.model.fc.in_features, self.num_classes)
+            self.model.fc = nn.Linear(self.model.fc.in_features, len(id2label))
             self.model.to(self.device)
 
         self.learnable_parameters = [param for param in self.model.parameters()
@@ -50,3 +51,10 @@ class ModelWrapper:
             info = info.update({"num_classes": self.num_classes,
                      "backbone_freezed": self.freeze_backbone})
         return info
+
+    def predict(self, src):
+        logits = self.get_logits(src)
+        _, preds = torch.max(logits, 1)
+        preds = preds.reshape(-1, 1).detach().cpu()
+        labels = [self.id2label[idx.item()] for idx in preds]
+        return labels
