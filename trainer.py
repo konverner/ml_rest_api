@@ -20,17 +20,17 @@ class Trainer:
             wandb_params: Dict[str, str] = None):
         self.config = config
         self.model_wrapper = model_wrapper
-        self.num_classes = len(id2label)
         self.dataloaders = dataloaders
 
         self.metrics = {phase: {'accuracy': [], 'loss': []} for phase in self.dataloaders.keys()}
-        self.model_wrapper.init_model(self.num_classes, config['freeze_backbone'])
+        self.model_wrapper.init_model(id2label, config['freeze_backbone'])
         self.optimizer = getattr(optim, config['optimizer_name'])(params=self.model_wrapper.learnable_parameters, lr=config['lr'])
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.1)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=250, gamma=0.1)
         self.criterion = nn.CrossEntropyLoss()
 
         self.last_record = 0.
         self.best_model = None
+        self.wandb_params = wandb_params
 
     def train(self, num_epochs=100):
         for epoch in range(num_epochs):
@@ -72,9 +72,10 @@ class Trainer:
                         self.best_model = copy.deepcopy(self.model_wrapper.model)
                         print('new best model achieved with test accuracy {:.3f}'.format(self.last_record))
 
-                wandb.log({f"accuracy_{phase}": self.metrics[phase]['accuracy'][-1],
-                           f"loss_{phase}": self.metrics[phase]['loss'][-1],
-                           f"learning rate": self.scheduler._last_lr[0]})
+                if self.wandb_params is not None:
+                    wandb.log({f"accuracy_{phase}": self.metrics[phase]['accuracy'][-1],
+                               f"loss_{phase}": self.metrics[phase]['loss'][-1],
+                               f"learning rate": self.scheduler._last_lr[0]})
 
     def eval(self, dataloader, metric_func=None):
         total_metrics = 0
