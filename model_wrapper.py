@@ -48,8 +48,9 @@ class ModelWrapper:
                  "device": self.device,
                  "trained": self.trained}
         if self.trained:
-            info = info.update({"num_classes": self.num_classes,
-                     "backbone_freezed": self.freeze_backbone})
+            info.update({"num_classes": len(self.id2label),
+                         "classes": self.id2label,
+                         "backbone_freezed": self.freeze_backbone})
         return info
 
     def predict(self, src):
