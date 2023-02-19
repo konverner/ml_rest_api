@@ -7,17 +7,18 @@ from flask_restx import Resource, Api
 from api_parsers import *
 from model_wrapper import ModelWrapper
 from trainer import Trainer
-from dataloader import build_train_dataloader, build_predict_dataloader
+from dataloader import build_train_dataloader, build_predict_dataloader, build_cifar_dataloader
 
 MAX_MODEL_NUM = 10
 MODELS_DICT = {}
+CONFIG = {'wandb_enabled': False}
 
 app = Flask(__name__)
 app.config["BUNDLE_ERRORS"] = True
 api = Api(app)
 
 
-@api.route("/wandb/auth")
+@api.route("/wandb/auth", methods=['POST'])
 class WandAuth(Resource):
     @api.expect(parserWandb)
     @api.doc(responses={
@@ -27,6 +28,7 @@ class WandAuth(Resource):
     def post(self):
         success = wandb.login(key=parserWandb.parse_args()['key'])
         if success:
+            CONFIG['wandb_enabled'] = True
             return {"status": "login succesful"}, 201
         else:
             return {"status": "login failed"}, 404
@@ -86,26 +88,7 @@ class ModelAdd(Resource):
                    }, 403
 
 
-@api.route("/models/remove")
-class ModelRemove(Resource):
-    @api.expect(parserRemove)
-    @api.doc(responses={
-        201: "Success",
-        404: "Model with a given name does not exist"
-    })
-    def delete(self):
-        __name = parserRemove.parse_args()["name"]
-        if __name not in MODELS_DICT.keys():
-            return {
-                       "status": "Failed",
-                       "message": "Model with a given name does not exist"
-                   }, 404
-        else:
-            MODELS_DICT.pop(__name)
-            return {"status": "OK", "message": "Model removed!"}, 201
-
-
-@api.route("/models/train")
+@api.route("/models/train", methods=['POST'])
 class ModelTrain(Resource):
     @api.expect(parserTrain)
     @api.doc(
@@ -114,7 +97,7 @@ class ModelTrain(Resource):
             404: "Model with a given name does not exist",
             406: "Error while training model; See description for more info"
         })
-    def get(self):
+    def post(self):
         args = parserTrain.parse_args()
         if args['model_name'] not in MODELS_DICT.keys():
             return {
@@ -126,12 +109,15 @@ class ModelTrain(Resource):
                 id2label, dataloaders = build_train_dataloader(args["dataset_path"],
                                                                args["batch_size"],
                                                                args["valid_part"])
+
+                id2label, dataloaders = build_cifar_dataloader(8)
+
                 config = {'optimizer_name': args["optimizer_name"],
                           "lr": args["learning_rate"],
                           'freeze_backbone': args["freeze_backbone"]
                           }
                 trainer = Trainer(config, MODELS_DICT[args['model_name']], dataloaders, id2label)
-                if wandb.login():
+                if CONFIG['wandb_enabled']:
                     wandb.init(
                         project=args["project_name"],
                         name=args["experiment_name"],
@@ -145,10 +131,12 @@ class ModelTrain(Resource):
                     wandb_url = wandb.run.get_url()
                 else:
                     wandb_url = None
+
+                trainer.wandb_params = trainer
                 MODELS_DICT[args['model_name']].wandb = {"project": args["project_name"],
                                                          "name": args["experiment_name"],
                                                          "url": wandb_url}
-                trainer.train(10)
+                trainer.train(args['epochs_numb'])
                 return {"status": "OK", "message": f"Best train score {trainer.last_record}"}, 201
             except Exception as e:
                 return {
@@ -185,7 +173,7 @@ class ModelTest(Resource):
                        }, 406
 
 
-@api.route("/models/predict")
+@api.route("/models/predict", methods=['POST'])
 class ModelPredict(Resource):
     @api.expect(parserPredict)
     @api.doc(
@@ -214,6 +202,25 @@ class ModelPredict(Resource):
                            "status": "Failed",
                            "message": getattr(e, "message", repr(e))
                        }, 407
+
+
+@api.route("/models/remove")
+class ModelRemove(Resource):
+    @api.expect(parserRemove)
+    @api.doc(responses={
+        201: "Success",
+        404: "Model with a given name does not exist"
+    })
+    def delete(self):
+        __name = parserRemove.parse_args()["name"]
+        if __name not in MODELS_DICT.keys():
+            return {
+                       "status": "Failed",
+                       "message": "Model with a given name does not exist"
+                   }, 404
+        else:
+            MODELS_DICT.pop(__name)
+            return {"status": "OK", "message": "Model removed!"}, 201
 
 
 if __name__ == "__main__":
