@@ -45,9 +45,57 @@ Listing all added models
 curl http://127.0.0.1:5000/models/list
 ---
 {
-    "status": "OK",
-    "message": "Model my_model created on cpu!"
+    "models": {
+        "my_model1": {
+            "name": "my_model1",
+            "info": null
+        },
+        "my_model2": {
+            "name": "my_model2",
+            "info": null
+        }
+    }
 }
+(venv) PS C:\Users\konst\PycharmProjects\rest_ml> curl http://127.0.0.1:5000/models/list
+{
+    "models": {
+        "my_model1": {
+            "name": "my_model1",
+            "info": {
+                "backbone_name": "resnet18",
+                "device": "cpu",
+                "trained": true,
+                "num_classes": 10,
+                "classes": [
+                    "airplane",
+                    "automobile",
+                    ...
+                    "ship",
+                    "truck"
+                ],
+                "backbone_freezed": true
+            }
+        },
+        "my_model2": {
+            "name": "my_model2",
+            "info": {
+                "backbone_name": "resnet50",
+                "device": "cpu",
+                "trained": true,
+                "num_classes": 10,
+                "classes": [
+                    "airplane",
+                    "automobile",
+                    ...
+                    "ship",
+                    "truck"
+                ],
+                "backbone_freezed": true
+            }
+        }
+    }
+}
+
 ```
 
 Removing a model with given name
