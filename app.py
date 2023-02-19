@@ -108,7 +108,7 @@ class ModelTrain(Resource):
             try:
                 id2label, dataloaders = build_train_dataloader(args["dataset_path"],
                                                                args["batch_size"],
-                                                               args["valid_part"]
+                                                               args["valid_part"])
 
                 config = {'optimizer_name': args["optimizer_name"],
                           "lr": args["learning_rate"],
