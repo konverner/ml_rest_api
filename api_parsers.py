@@ -1,6 +1,5 @@
 from flask_restx import reqparse, fields
 
-
 parserWandb = reqparse.RequestParser(bundle_errors=True)
 parserWandb.add_argument("key",
                          required=True,
@@ -60,28 +59,35 @@ parserTrain.add_argument("dataset_path",
 
 parserTrain.add_argument("valid_part",
                          type=float,
-                         required=True,
+                         required=False,
                          help="What fraction of data goes to validation part",
                          default=0.1,
                          location="args")
 
-parserTrain.add_argument("batch_size",
+parserTrain.add_argument("epochs_numb",
                          type=int,
                          required=True,
+                         help="Number of epochs",
+                         default=20,
+                         location="args")
+
+parserTrain.add_argument("batch_size",
+                         type=int,
+                         required=False,
                          default=32,
                          help="Batch size",
                          location="args")
 
 parserTrain.add_argument("optimizer_name",
                          type=str,
-                         required=True,
+                         required=False,
                          default='Adam',
                          help="Optimizer name",
                          location="args")
 
 parserTrain.add_argument("learning_rate",
                          type=float,
-                         required=True,
+                         required=False,
                          default=0.01,
                          help="Initial learning rate",
                          location="args")
