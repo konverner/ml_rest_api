@@ -4,6 +4,22 @@ A REST API (also known as RESTful API) is an application programming interface (
 
 In this repository, I keep and maintain template for deployment of ML model with REST API and experiment tracking service ["Weights & Biases"](https://wandb.ai/). 
 
+## Get Started
+
+Install dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+Launch an application:
+
+```
+python app.py
+```
+
+Now, the app is available on local host: `http://127.0.0.1:5000`
+
 ## API examples
 
 W&B authentication with API key
