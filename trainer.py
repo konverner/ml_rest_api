@@ -1,5 +1,5 @@
 import copy
-from typing import List, Dict
+from typing import List
 
 import wandb
 import torch
@@ -17,7 +17,7 @@ class Trainer:
             model_wrapper: ModelWrapper,
             dataloaders: List[DataLoader],
             id2label: List[str],
-            wandb_params: Dict[str, str] = None):
+            wandb_enable: bool = False):
         self.config = config
         self.model_wrapper = model_wrapper
         self.dataloaders = dataloaders
@@ -25,12 +25,12 @@ class Trainer:
         self.metrics = {phase: {'accuracy': [], 'loss': []} for phase in self.dataloaders.keys()}
         self.model_wrapper.init_model(id2label, config['freeze_backbone'])
         self.optimizer = getattr(optim, config['optimizer_name'])(params=self.model_wrapper.learnable_parameters, lr=config['lr'])
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=250, gamma=0.1)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=2)
         self.criterion = nn.CrossEntropyLoss()
 
         self.last_record = 0.
         self.best_model = None
-        self.wandb_params = wandb_params
+        self.wandb_enable = wandb_enable
 
     def train(self, num_epochs=100):
         for epoch in range(num_epochs):
@@ -72,7 +72,7 @@ class Trainer:
                         self.best_model = copy.deepcopy(self.model_wrapper.model)
                         print('new best model achieved with test accuracy {:.3f}'.format(self.last_record))
 
-                if self.wandb_params is not None:
+                if self.wandb_enable:
                     wandb.log({f"accuracy_{phase}": self.metrics[phase]['accuracy'][-1],
                                f"loss_{phase}": self.metrics[phase]['loss'][-1],
                                f"learning rate": self.scheduler._last_lr[0]})
